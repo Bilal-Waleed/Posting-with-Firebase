@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard | Suggestions</title>
+  <link rel="stylesheet" href="../css/dashboard.css">
+  <script type="module" src="../js/dashboard.js"></script>
+  <link rel="icon" href="../assets/pic.jpg" type="image/jpg">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="dashboard-container">
+    <h1 id="welcome-message">Welcome to the Dashboard!</h1>
+    <div class="search-bar-container">
+      <input type="email" id="search-input" placeholder="Search by email" required>
+      <i id="search-icon" class="fas fa-search search-icon"></i>
+    </div>
+    <div class="icon-container">
+      <a href="dash-post.html" title="Home Page"><i class="fas fa-home icon"></i></a>
+      <i class="fas fa-user-friends icon"></i>
+    </div>
+    <h2 class="suggestion-heading">Suggestions</h2>
+  </div>
+  <div id="search-results-container" class="results-container"></div>
+  <button id="logout-btn" class="logout-button">Logout</button>
+</body>
+</html>

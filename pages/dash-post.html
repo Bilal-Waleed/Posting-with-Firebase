@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard | Home</title>
+  <link rel="stylesheet" href="../css/dashboard.css">
+  <script type="module" src="../js/dash-post.js"></script>
+  <link rel="icon" href="../assets/pic.jpg" type="image/jpg">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="dashboard-container">
+    <h1 id="welcome-message">Welcome to the Dashboard!</h1>
+    <div class="icon-container">
+      <i class="fas fa-home icon"></i>
+      <a href="dashboard.html" title="Friends Page"><i class="fas fa-user-friends icon"></i></a>
+    </div>
+    <div class="button-container">
+        <button class=" action-btn" id="my-posts-btn">My Posts</button>
+        <button id="create-post-btn" class="action-btn">Create Post</button>
+    </div>
+    <h2 class="suggestion-heading">Posts</h2>
+  </div>
+  <div id="search-results-container" class="results-container"></div>
+  <button id="logout-btn" class="logout-button">Logout</button>
+
+  <div id="create-post-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2 id="modal-title">Create Post</h2>
+      <i id="close-modal" class="fas fa-times close-icon"></i>
+      <textarea id="post-text" placeholder="What's on your mind?"></textarea>
+      <button id="post-btn" class="post-btn">Post</button>
+    </div>
+  </div>
+</body>
+</html>
