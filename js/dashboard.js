@@ -71,8 +71,8 @@ logoutButton.addEventListener("click", async () => {
 });
 
 async function handleSearch() {
-  const email = searchInput.value.trim();
-  if (!email) {
+  const username = searchInput.value.trim();
+  if (!username) {
     loadUsers(); 
     return;
   }
@@ -80,7 +80,7 @@ async function handleSearch() {
   try {
     searchResultContainer.innerHTML = "";
     const usersRef = collection(db, "users");
-    const q = query(usersRef, where("email", "==", email));
+    const q = query(usersRef, where("username", "==", username));
     const querySnapshot = await getDocs(q);
 
     if (!querySnapshot.empty) {
@@ -101,7 +101,7 @@ async function handleSearch() {
     } else {
       const noUserCard = document.createElement("div");
       noUserCard.classList.add("user-card");
-      noUserCard.innerHTML = `<p>No user found with this email.</p>`;
+      noUserCard.innerHTML = `<p>No user found with this username.</p>`;
       searchResultContainer.appendChild(noUserCard);
     }
   } catch (error) {

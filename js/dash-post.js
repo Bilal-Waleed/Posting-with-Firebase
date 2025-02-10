@@ -5,13 +5,14 @@ import {
     doc,
     getDoc,
     collection,
+    getDocs,
     addDoc,
     serverTimestamp,
-    onSnapshot,
-    query,
-    orderBy,
     updateDoc,
     deleteDoc,
+    query,
+    where,
+    orderBy,
   } from "./firebase.js";
   
   const logoutButton = document.getElementById("logout-btn");
@@ -25,10 +26,11 @@ import {
   const myPostsBtn = document.getElementById("my-posts-btn");
   const modalTitle = document.getElementById("modal-title");
   
-  let unsubscribePosts = null;
   let showingMyPosts = false;
   let currentEditingPostId = null;
+  const userCache = new Map(); // Cache user data for faster access
   
+  // Load the logged-in user's details and posts
   document.addEventListener("DOMContentLoaded", async () => {
     const loggedInUserUID = localStorage.getItem("loggedInUserUID");
   
@@ -36,150 +38,173 @@ import {
       const userDoc = await getDoc(doc(db, "users", loggedInUserUID));
       if (userDoc.exists()) {
         const userData = userDoc.data();
-        welcomeMessage.textContent = `Welcome, ${userData.username}!`;
+        if (welcomeMessage) welcomeMessage.textContent = `Welcome, ${userData.username}!`;
       } else {
         localStorage.removeItem("loggedInUserUID");
         window.location.href = "login.html";
       }
-      loadPosts();
+  
+      // Load posts based on the current state
+      if (showingMyPosts) {
+        loadMyPosts();
+      } else {
+        loadPosts();
+      }
     } else {
       window.location.href = "login.html";
     }
   });
   
-  logoutButton.addEventListener("click", async () => {
-    try {
-      await signOut(auth);
-      localStorage.removeItem("loggedInUserUID");
-      alert("Logged out successfully!");
-      window.location.href = "login.html";
-    } catch (error) {
-      alert(`Error: ${error.message}`);
-    }
-  });
-  
-  createPostBtn.addEventListener("click", () => {
-    openPostModal("Create Post", "");
-  });
-  
-  closeModalIcon.addEventListener("click", closePostModal);
-  
-  postButton.addEventListener("click", async () => {
-    const postContent = postText.value.trim();
-  
-    if (!postContent) {
-      alert("Please enter some text for your post.");
-      return;
-    }
-  
-    if (postContent.length > 180) {
-      alert(`Post content is too long! Please keep it under 180 characters. Current length: ${postContent.length}`);
-      return;
-    }
-  
-    const loggedInUserUID = localStorage.getItem("loggedInUserUID");
-  
-    try {
-      if (currentEditingPostId) {
-        await updateDoc(doc(db, "posts", currentEditingPostId), {
-          content: postContent,
-        });
-        console.log("Post updated successfully!");
-      } else {
-        const newPostRef = await addDoc(collection(db, "posts"), {
-          uid: loggedInUserUID,
-          content: postContent,
-          createdAt: serverTimestamp(),
-        });
-  
-        // Optimistically update UI
-        renderPost({
-          id: newPostRef.id,
-          uid: loggedInUserUID,
-          content: postContent,
-          createdAt: new Date(),
-        });
-        console.log("Post created successfully!");
+  // Logout functionality
+  if (logoutButton) {
+    logoutButton.addEventListener("click", async () => {
+      try {
+        await signOut(auth);
+        localStorage.removeItem("loggedInUserUID");
+        alert("Logged out successfully!");
+        window.location.href = "login.html";
+      } catch (error) {
+        alert(`Error: ${error.message}`);
       }
-  
-      postText.value = "";
-      closePostModal();
-    } catch (error) {
-      alert(`Error: ${error.message}`);
-    }
-  });
-  
-  myPostsBtn.addEventListener("click", () => {
-    showingMyPosts ? loadPosts() : loadMyPosts();
-    myPostsBtn.textContent = showingMyPosts ? "My Posts" : "All Posts";
-    showingMyPosts = !showingMyPosts;
-  });
-  
-  function loadPosts() {
-    const postsQuery = query(collection(db, "posts"), orderBy("createdAt", "desc"));
-    setupSnapshotListener(postsQuery);
-  }
-  
-  function loadMyPosts() {
-    const loggedInUserUID = localStorage.getItem("loggedInUserUID");
-    if (!loggedInUserUID) return;
-  
-    const myPostsQuery = query(collection(db, "posts"), orderBy("createdAt", "desc"));
-    setupSnapshotListener(myPostsQuery, true);
-  }
-  
-  function setupSnapshotListener(queryRef, filterByUser = false) {
-    if (unsubscribePosts) unsubscribePosts();
-  
-    unsubscribePosts = onSnapshot(queryRef, (snapshot) => {
-      const posts = [];
-      snapshot.forEach((doc) => {
-        const postData = doc.data();
-        if (postData.createdAt) {
-          if (!filterByUser || postData.uid === localStorage.getItem("loggedInUserUID")) {
-            posts.push({ ...postData, id: doc.id });
-          }
-        }
-      });
-      renderPosts(posts);
     });
   }
   
-  function renderPosts(posts) {
-    searchResultsContainer.innerHTML = "";
-    posts.forEach((post) => renderPost(post));
+  // Open the post creation modal
+  if (createPostBtn) {
+    createPostBtn.addEventListener("click", () => {
+      openPostModal("Create Post", "");
+    });
   }
   
-  async function renderPost(post) {
+  // Close the post modal
+  if (closeModalIcon) {
+    closeModalIcon.addEventListener("click", closePostModal);
+  }
+  
+  if (postButton) {
+    postButton.addEventListener("click", async () => {
+      const postContent = postText.value.trim();
+  
+      if (!postContent) {
+        alert("Please enter some text for your post.");
+        return;
+      }
+  
+      if (postContent.length > 180) {
+        alert(`Post content is too long! Please keep it under 180 characters. Current length: ${postContent.length}`);
+        return;
+      }
+  
+      postButton.disabled = true; // Disable the button to prevent multiple clicks
+  
+      const loggedInUserUID = localStorage.getItem("loggedInUserUID");
+  
+      try {
+        if (currentEditingPostId) {
+          await updateDoc(doc(db, "posts", currentEditingPostId), {
+            content: postContent,
+          });
+          console.log("Post updated successfully!");
+        } else {
+          await addDoc(collection(db, "posts"), {
+            uid: loggedInUserUID,
+            content: postContent,
+            createdAt: serverTimestamp(),
+          });
+          console.log("Post created successfully!");
+        }
+  
+        postText.value = "";
+        closePostModal();
+        if (showingMyPosts) {
+          loadMyPosts();
+        } else {
+          loadPosts();
+        }
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      } finally {
+        postButton.disabled = false; // Re-enable the button after the operation
+      }
+    });
+  }
+  
+  
+  // Toggle between "My Posts" and "All Posts"
+  if (myPostsBtn) {
+    myPostsBtn.addEventListener("click", () => {
+      showingMyPosts ? loadPosts() : loadMyPosts();
+      myPostsBtn.textContent = showingMyPosts ? "My Posts" : "All Posts";
+      showingMyPosts = !showingMyPosts;
+    });
+  }
+  
+  // Load all posts
+  async function loadPosts() {
+    try {
+      searchResultsContainer.innerHTML = "";
+      const postsQuery = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+      const postsSnapshot = await getDocs(postsQuery);
+      const posts = postsSnapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+      renderPosts(posts);
+    } catch (error) {
+      console.error("Error loading posts:", error);
+    }
+  }
+  
+  // Load posts created by the logged-in user
+  async function loadMyPosts() {
+    const loggedInUserUID = localStorage.getItem("loggedInUserUID");
+    if (!loggedInUserUID) return;
+  
+    try {
+      searchResultsContainer.innerHTML = "";
+  
+      // Fetch all posts without query
+      const postsSnapshot = await getDocs(collection(db, "posts"));
+      let posts = postsSnapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+  
+      // Filter by logged-in user's posts
+      posts = posts.filter((post) => post.uid === loggedInUserUID);
+  
+      // Sort by createdAt timestamp manually
+      posts.sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds);
+  
+      renderPosts(posts);
+    } catch (error) {
+      console.error("Error loading user posts:", error);
+    }
+  }
+  
+  
+  // Render posts on the screen
+  function renderPosts(posts) {
+    searchResultsContainer.innerHTML = "";
+    const fragment = document.createDocumentFragment();
+  
+    posts.forEach((post) => {
+      const postElement = createPostElement(post);
+      fragment.appendChild(postElement);
+    });
+  
+    searchResultsContainer.appendChild(fragment);
+  }
+  
+  function createPostElement(post) {
     const postElement = document.createElement("div");
     postElement.classList.add("post-card");
   
-    let username = "Unknown User";
-  
-    try {
-      const userDoc = await getDoc(doc(db, "users", post.uid));
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        username = userData.username;
-      }
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-    }
-  
-    const postTime = post.createdAt?.toDate?.()?.toLocaleTimeString("en-PK", {
+    let username = userCache.get(post.uid) || "Loading...";
+    postElement.innerHTML = `
+      <p><strong>${username}</strong> - ${post.createdAt?.toDate?.()?.toLocaleTimeString("en-PK", {
         hour: "2-digit",
         minute: "2-digit",
-      }) || "No timestamp";
-      
-      postElement.innerHTML = `
-        <p><strong>${username}</strong> - ${postTime}</p>
-        <p>${post.content}</p>
-        <div class="post-actions"></div>
-      `;
-      
+      }) || "No timestamp"}</p>
+      <p>${post.content}</p>
+      <div class="post-actions"></div>
+    `;
   
     const postActions = postElement.querySelector(".post-actions");
-  
     const loggedInUserUID = localStorage.getItem("loggedInUserUID");
   
     if (post.uid === loggedInUserUID && showingMyPosts) {
@@ -203,7 +228,27 @@ import {
       postActions.appendChild(deleteButton);
     }
   
-    searchResultsContainer.appendChild(postElement);
+    fetchUsername(post.uid).then((fetchedUsername) => {
+      postElement.querySelector("strong").textContent = fetchedUsername;
+    });
+  
+    return postElement;
+  }
+  
+  async function fetchUsername(uid) {
+    if (userCache.has(uid)) return userCache.get(uid);
+  
+    try {
+      const userDoc = await getDoc(doc(db, "users", uid));
+      if (userDoc.exists()) {
+        const username = userDoc.data().username;
+        userCache.set(uid, username);
+        return username;
+      }
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+    }
+    return "Unknown User";
   }
   
   function openPostModal(title, content = "", postId = null) {
@@ -223,6 +268,7 @@ import {
   async function deletePost(postId) {
     try {
       await deleteDoc(doc(db, "posts", postId));
+      loadMyPosts();
     } catch (error) {
       alert(`Error deleting post: ${error.message}`);
     }
