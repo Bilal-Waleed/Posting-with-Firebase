@@ -28,9 +28,8 @@ import {
   
   let showingMyPosts = false;
   let currentEditingPostId = null;
-  const userCache = new Map(); // Cache user data for faster access
+  const userCache = new Map(); 
   
-  // Load the logged-in user's details and posts
   document.addEventListener("DOMContentLoaded", async () => {
     const loggedInUserUID = localStorage.getItem("loggedInUserUID");
   
@@ -43,8 +42,7 @@ import {
         localStorage.removeItem("loggedInUserUID");
         window.location.href = "login.html";
       }
-  
-      // Load posts based on the current state
+
       if (showingMyPosts) {
         loadMyPosts();
       } else {
@@ -54,8 +52,7 @@ import {
       window.location.href = "login.html";
     }
   });
-  
-  // Logout functionality
+
   if (logoutButton) {
     logoutButton.addEventListener("click", async () => {
       try {
@@ -68,15 +65,13 @@ import {
       }
     });
   }
-  
-  // Open the post creation modal
+
   if (createPostBtn) {
     createPostBtn.addEventListener("click", () => {
       openPostModal("Create Post", "");
     });
   }
-  
-  // Close the post modal
+
   if (closeModalIcon) {
     closeModalIcon.addEventListener("click", closePostModal);
   }
@@ -95,7 +90,7 @@ import {
         return;
       }
   
-      postButton.disabled = true; // Disable the button to prevent multiple clicks
+      postButton.disabled = true; 
   
       const loggedInUserUID = localStorage.getItem("loggedInUserUID");
   
@@ -124,13 +119,11 @@ import {
       } catch (error) {
         alert(`Error: ${error.message}`);
       } finally {
-        postButton.disabled = false; // Re-enable the button after the operation
+        postButton.disabled = false; 
       }
     });
   }
-  
-  
-  // Toggle between "My Posts" and "All Posts"
+
   if (myPostsBtn) {
     myPostsBtn.addEventListener("click", () => {
       showingMyPosts ? loadPosts() : loadMyPosts();
@@ -138,8 +131,7 @@ import {
       showingMyPosts = !showingMyPosts;
     });
   }
-  
-  // Load all posts
+
   async function loadPosts() {
     try {
       searchResultsContainer.innerHTML = "";
@@ -151,8 +143,7 @@ import {
       console.error("Error loading posts:", error);
     }
   }
-  
-  // Load posts created by the logged-in user
+
   async function loadMyPosts() {
     const loggedInUserUID = localStorage.getItem("loggedInUserUID");
     if (!loggedInUserUID) return;
@@ -160,14 +151,11 @@ import {
     try {
       searchResultsContainer.innerHTML = "";
   
-      // Fetch all posts without query
       const postsSnapshot = await getDocs(collection(db, "posts"));
       let posts = postsSnapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
-  
-      // Filter by logged-in user's posts
+
       posts = posts.filter((post) => post.uid === loggedInUserUID);
   
-      // Sort by createdAt timestamp manually
       posts.sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds);
   
       renderPosts(posts);
@@ -175,9 +163,7 @@ import {
       console.error("Error loading user posts:", error);
     }
   }
-  
-  
-  // Render posts on the screen
+
   function renderPosts(posts) {
     searchResultsContainer.innerHTML = "";
     const fragment = document.createDocumentFragment();
@@ -193,16 +179,25 @@ import {
   function createPostElement(post) {
     const postElement = document.createElement("div");
     postElement.classList.add("post-card");
-  
+
     let username = userCache.get(post.uid) || "Loading...";
-    postElement.innerHTML = `
-      <p><strong>${username}</strong> - ${post.createdAt?.toDate?.()?.toLocaleTimeString("en-PK", {
+
+    let formattedTime = "No timestamp"; 
+    if (post.createdAt) {
+        const timestamp = post.createdAt.toDate ? post.createdAt.toDate() : new Date(post.createdAt);
+        formattedTime = timestamp.toLocaleTimeString("en-PK", {
         hour: "2-digit",
         minute: "2-digit",
-      }) || "No timestamp"}</p>
-      <p>${post.content}</p>
-      <div class="post-actions"></div>
+    });
+    }
+
+    postElement.innerHTML = `
+    <p><strong>${username}</strong> - ${formattedTime}</p>
+    <p>${post.content}</p>
+    <div class="post-actions"></div>
     `;
+
+
   
     const postActions = postElement.querySelector(".post-actions");
     const loggedInUserUID = localStorage.getItem("loggedInUserUID");
